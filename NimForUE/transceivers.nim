@@ -10,6 +10,33 @@ uClass USignalTransceiverBase of UActorComponent:
         proc printMissingTransceiverError() =
             UE_Warn "Receiver field is empty in actor '" & $self.getOwner().getDisplayName() & ". Message was sent by '???' [" & $self.getHandledSignalType() & "]" 
 
+proc getTransceiverComponent[T](actor: AActorPtr, transceiverClass: TSubclassOf[T]): USignalTransceiverBasePtr =
+    if not actor.isValid():
+        # UE_Warn "Actor is invalid in getTransceiverComponent for class " & $transceiverClass.getName()
+        return nil
+
+    let components = actor.getComponentsByClass(transceiverClass)
+    if components.len == 0:
+        # UE_Warn "Actor '" & $actor.getDisplayName() & "' has no transceivers of class " & $transceiverClass.getName()
+        return nil
+
+    if components.len > 1:
+        # UE_Warn "Actor '" & $actor.getDisplayName() & "' has more than one transceiver of class " & $transceiverClass.getName()
+        discard
+    
+    let txComponent = components[0]
+    if not txComponent.isValid():
+        # UE_Warn "Actor '" & $actor.getDisplayName() & "' has invalid transceiver of class " & $transceiverClass.getName()
+        return nil
+
+    let txSignalComponent = ueCast[USignalTransceiverBase](txComponent)
+    if txSignalComponent.isNil():
+        # UE_Warn "Actor '" & $actor.getDisplayName() & "' has transceiver of class " & $transceiverClass.getName() & " that is not a USignalTransceiverBase"
+        return nil
+
+    return txSignalComponent
+
+
 
 proc getTransceiverComponent(actor: AActorPtr, transceiverClass: UClassPtr): USignalTransceiverBasePtr =
     if not actor.isValid():

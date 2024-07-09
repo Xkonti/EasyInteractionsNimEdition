@@ -1,4 +1,5 @@
 {
+    "bpOnly": true,
     "extraModuleNames": [],
     "extraNonBpModules": []
 } 
