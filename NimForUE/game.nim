@@ -10,118 +10,119 @@ uClass USignalTransceiverBase of UActorComponent:
             result = FName()
   
     ufuncs(BlueprintCallable):
-        proc printMissingTranscieverError() =
+        proc printMissingTransceiverError() =
             UE_Warn "Receiver field is empty in actor '" & $self.getOwner().getDisplayName() & ". Message was sent by '???' [" & $self.getHandledSignalType() & "]" 
 
 
-proc getTranscieverComponent(actor: AActorPtr, transcieverClass: UClassPtr): USignalTransceiverBasePtr =
+proc getTransceiverComponent(actor: AActorPtr, transceiverClass: UClassPtr): USignalTransceiverBasePtr =
     if not actor.isValid():
-        UE_Warn "Actor is invalid in getTranscieverComponent for class " & $transcieverClass.getName()
+        UE_Warn "Actor is invalid in getTransceiverComponent for class " & $transceiverClass.getName()
         return nil
 
-    let components = actor.getComponentsByClass(makeTSubclassOf[USignalTransceiverBase](transcieverClass))
+    let components = actor.getComponentsByClass(makeTSubclassOf[USignalTransceiverBase](transceiverClass))
     if components.len == 0:
-        UE_Warn "Actor '" & $actor.getDisplayName() & "' has no transcievers of class " & $transcieverClass.getName()
+        UE_Warn "Actor '" & $actor.getDisplayName() & "' has no transceivers of class " & $transceiverClass.getName()
         return nil
 
     if components.len > 1:
-        UE_Warn "Actor '" & $actor.getDisplayName() & "' has more than one transciever of class " & $transcieverClass.getName()
+        UE_Warn "Actor '" & $actor.getDisplayName() & "' has more than one transceiver of class " & $transceiverClass.getName()
     
     let txComponent = components[0]
     if not txComponent.isValid():
-        UE_Warn "Actor '" & $actor.getDisplayName() & "' has invalid transciever of class " & $transcieverClass.getName()
+        UE_Warn "Actor '" & $actor.getDisplayName() & "' has invalid transceiver of class " & $transceiverClass.getName()
         return nil
 
     let txSignalComponent = ueCast[USignalTransceiverBase](txComponent)
     if txSignalComponent.isNil():
-        UE_Warn "Actor '" & $actor.getDisplayName() & "' has transciever of class " & $transcieverClass.getName() & " that is not a USignalTransceiverBase"
+        UE_Warn "Actor '" & $actor.getDisplayName() & "' has transceiver of class " & $transceiverClass.getName() & " that is not a USignalTransceiverBase"
         return nil
 
     return txSignalComponent
 
 
 
-# template CreateTranscieverComponent(classname: untyped, delegateName: untyped, dataType: untyped, signalName: string) =
-#     uDelegate delegateName(sender: AActorPtr, receivedData: dataType)
+# Template for creating a signal transceiver component
+template CreateTransceiverComponent(classname: untyped, delegateName: untyped, dataType: untyped, signalName: string) {.dirty.} =
+    uDelegate delegateName(sender: AActorPtr, receivedData: dataType)
 
-#     uClass classname of USignalTransceiverBase:
-#         (Blueprintable, BlueprintType, ClassGroup="Easy Interactions", BlueprintSpawnableComponent)
+    uClass classname of USignalTransceiverBase:
+        (Blueprintable, BlueprintType, ClassGroup="Easy Interactions", BlueprintSpawnableComponent)
     
-#         uprops(BlueprintAssignable, Category = "Easy Interactions|Signal"):
-#             onSignal: delegateName
+        uprops(BlueprintAssignable, Category = "Easy Interactions|Signal"):
+            onSignal: delegateName
     
-#         ufuncs(BlueprintCallable, BlueprintNativeEvent):
-#             proc getHandledSignalType(): FName =
-#                 const name = FName(signalName)
-#                 result = name
+        ufuncs(BlueprintCallable, BlueprintNativeEvent):
+            proc getHandledSignalType(): FName =
+                const name = FName(signalName)
+                result = name
     
-#         ufuncs(BlueprintCallable):
-#             proc receiveSignal(sender: AActorPtr, receivedData: dataType) =
-#                 self.onSignal.broadcast(sender, receivedData)
+        ufuncs(BlueprintCallable):
+            proc receiveSignal(sender: AActorPtr, receivedData: dataType) =
+                self.onSignal.broadcast(sender, receivedData)
         
-#             proc transmitSignal(sender: AActorPtr, receiver: AActorPtr, dataToTransmit: dataType): bool =
-#                 # Obtain receving transciever
-#                 let txClass = self.getClass()
-#                 let txComponentPtr = getTranscieverComponent(sender, txClass)
-#                 if txComponentPtr.isNil:
-#                     # TODO: self.printMissingTranscieverError()
-#                     return false
-#                 let txComponent = ueCast[classname](txComponentPtr)
-#                 if txComponent.isNil: 
-#                     # TODO: self.printMissingTranscieverError()
-#                     return false
+            proc transmitSignal(sender: AActorPtr, receiver: AActorPtr, dataToTransmit: dataType): bool =
+                # Obtain receving transceiver
+                let txClass = self.getClass()
+                let txComponentPtr = getTransceiverComponent(receiver, txClass)
+                if txComponentPtr.isNil:
+                    # TODO: self.printMissingTransceiverError()
+                    return false
+                let receiverComponent = ueCast[classname](txComponentPtr)
+                if receiverComponent.isNil: 
+                    # TODO: self.printMissingTransceiverError()
+                    return false
 
-#                 # Get the sender
-#                 var senderRef = sender
-#                 if not sender.isValid():
-#                     senderRef = self.getOwner()
+                # Get the sender
+                var senderRef = sender
+                if not sender.isValid():
+                    senderRef = self.getOwner()
                 
-#                 # Transmit the signal
-#                 self.receiveSignal(senderRef, dataToTransmit)
-#                 return true
+                # Transmit the signal
+                receiverComponent.receiveSignal(senderRef, dataToTransmit)
+                return true
 
-#             proc transmitSignals(sender: AActorPtr, receivers: TArray[AActorPtr], signalsDataToTransmit: TArray[dataType]) =
-#                 if receivers.len != signalsDataToTransmit.len:
-#                     UE_Warn "TransmitSignals: receivers and signalsDataToTransmit arrays must have the same length"
+            proc transmitSignals(sender: AActorPtr, receivers: TArray[AActorPtr], signalsDataToTransmit: TArray[dataType]) =
+                if receivers.len != signalsDataToTransmit.len:
+                    UE_Warn "TransmitSignals: receivers and signalsDataToTransmit arrays must have the same length"
 
-#                 let itemsCount = min(receivers.len, signalsDataToTransmit.len)
+                let itemsCount = min(receivers.len, signalsDataToTransmit.len)
 
-#                 for i in 0..<itemsCount:
-#                     let receiver = receivers[i]
-#                     let dataToTransmit = signalsDataToTransmit[i]
-#                     discard self.transmitSignal(sender, receiver, dataToTransmit)
+                for i in 0..<itemsCount:
+                    let receiver = receivers[i]
+                    let dataToTransmit = signalsDataToTransmit[i]
+                    discard self.transmitSignal(sender, receiver, dataToTransmit)
 
+# template CreateTransceiverComponents(singleClassName: untyped, arrayClassName: untyped, singleDelegateName: untyped, arrayDelegateName: untyped, singleDataType: untyped, arrayDataType: untyped, signalName: string) {.dirty.} =
+#     CreateTransceiverComponent(singleClassName, singleDelegateName, singleDataType, signalName)
+#     CreateTransceiverComponent(arrayClassName, arrayDelegateName, arrayDataType, signalName & "[]")
 
-
-# CreateTranscieverComponent(UNameSignalTransceiver, FOnNameSignalDelegate, FName, "Name")
-
-uDelegate FOnNameSignalDelegate(sender: AActorPtr, receivedData: FName)
-
-uClass UNameSignalTransceiver of USignalTransceiverBase:
+# VoidSignalTransceiver
+uDelegate FOnVoidSignalDelegate(sender: AActorPtr)
+uClass UVoidSignalTransceiver of USignalTransceiverBase:
     (Blueprintable, BlueprintType, ClassGroup="Easy Interactions", BlueprintSpawnableComponent)
-  
+
     uprops(BlueprintAssignable, Category = "Easy Interactions|Signal"):
-        onSignal: FOnNameSignalDelegate
-  
+        onSignal: FOnVoidSignalDelegate
+
     ufuncs(BlueprintCallable, BlueprintNativeEvent):
         proc getHandledSignalType(): FName =
-            const name = FName("Name")
+            const name = n"Void"
             result = name
-  
+
     ufuncs(BlueprintCallable):
-        proc receiveSignal(sender: AActorPtr, receivedData: FName) =
-            self.onSignal.broadcast(sender, receivedData)
+        proc receiveSignal(sender: AActorPtr) =
+            self.onSignal.broadcast(sender)
     
-        proc transmitSignal(sender: AActorPtr, receiver: AActorPtr, dataToTransmit: FName): bool =
-            # Obtain receving transciever
+        proc transmitSignal(sender: AActorPtr, receiver: AActorPtr): bool =
+            # Obtain receving transceiver
             let txClass = self.getClass()
-            let txComponentPtr = getTranscieverComponent(sender, txClass)
+            let txComponentPtr = getTransceiverComponent(sender, txClass)
             if txComponentPtr.isNil:
-                # TODO: self.printMissingTranscieverError()
+                # TODO: self.printMissingTransceiverError()
                 return false
-            let txComponent = ueCast[UNameSignalTransceiver](txComponentPtr)
+            let txComponent = ueCast[UVoidSignalTransceiver](txComponentPtr)
             if txComponent.isNil: 
-                # TODO: self.printMissingTranscieverError()
+                # TODO: self.printMissingTransceiverError()
                 return false
 
             # Get the sender
@@ -130,17 +131,60 @@ uClass UNameSignalTransceiver of USignalTransceiverBase:
                 senderRef = self.getOwner()
             
             # Transmit the signal
-            self.receiveSignal(senderRef, dataToTransmit)
+            self.receiveSignal(senderRef)
             return true
 
-        proc transmitSignals(sender: AActorPtr, receivers: TArray[AActorPtr], signalsDataToTransmit: TArray[FName]) =
-            if receivers.len != signalsDataToTransmit.len:
-                UE_Warn "TransmitSignals: receivers and signalsDataToTransmit arrays must have the same length"
-
-            let itemsCount = min(receivers.len, signalsDataToTransmit.len)
-
-            for i in 0..<itemsCount:
+        proc transmitSignals(sender: AActorPtr, receivers: TArray[AActorPtr]) =
+            for i in 0..<receivers.len:
                 let receiver = receivers[i]
-                let dataToTransmit = signalsDataToTransmit[i]
-                discard self.transmitSignal(sender, receiver, dataToTransmit)
+                discard self.transmitSignal(sender, receiver)
 
+
+CreateTransceiverComponent(UActorClassSignalTransceiver, FOnActorClassSignalDelegate, TSubclassOf[AActor], "ActorClass")
+CreateTransceiverComponent(UActorSignalTransceiver, FOnActorSignalDelegate, AActorPtr, "Actor")
+CreateTransceiverComponent(UBoolSignalTransceiver, FOnBoolSignalDelegate, bool, "Bool")
+CreateTransceiverComponent(UByteSignalTransceiver, FOnByteSignalDelegate, byte, "Byte")
+CreateTransceiverComponent(UFloatSignalTransceiver, FOnFloatSignalDelegate, float32, "Float")
+CreateTransceiverComponent(UDoubleSignalTransceiver, FOnDoubleSignalDelegate, float, "Double")
+CreateTransceiverComponent(UInteger64_SignalTransceiver, FOnInteger64_SignalDelegate, int64, "Integer64")
+CreateTransceiverComponent(UIntegerSignalTransceiver, FOnIntegerSignalDelegate, int32, "Integer")
+CreateTransceiverComponent(UNameSignalTransceiver, FOnNameSignalDelegate, FName, "Name")
+CreateTransceiverComponent(UObjectSignalTransceiver, FOnObjectSignalDelegate, UObjectPtr, "Object")
+CreateTransceiverComponent(URotatorSignalTransceiver, FOnRotatorSignalDelegate, FRotator, "Rotator")
+CreateTransceiverComponent(UStringSignalTransceiver, FOnStringSignalDelegate, FString, "String")
+CreateTransceiverComponent(UTextSignalTransceiver, FOnTextSignalDelegate, FText, "Text")
+CreateTransceiverComponent(UTransformSignalTransceiver, FOnTransformSignalDelegate, FTransform, "Transform")
+CreateTransceiverComponent(UVectorSignalTransceiver, FOnVectorSignalDelegate, FVector, "Vector")
+
+uEnum EInteractionType:
+    (BlueprintType)
+    Use
+    Take
+
+uStruct FInteraction:
+    (BlueprintType)
+    uprop(BlueprintReadWrite, EditAnywhere):
+      interactionType: EInteractionType = Use
+      isInteractionStart: bool = false
+
+CreateTransceiverComponent(UInteractionSignalTransceiver, FOnInteractionSignalDelegate, FInteraction, "Interaction")
+
+
+
+uStruct FNameReceiverPair:
+    (BlueprintType)
+    uprop(BlueprintReadWrite, EditAnywhere):
+      message: FName = n""
+      target: AActorPtr = nil
+
+# Name signal transceiver Blueprint Function Library
+uClass UNameSignalTransceiverBlueprintFunctionLibrary of UBlueprintFunctionLibrary:
+  ufuncs(Static, BlueprintCallable):
+    proc TransmitNameReceiverPairSignal(transceiver: UNameSignalTransceiverPtr, sender: AActorPtr, nameReceiverPair: FNameReceiverPair): bool =
+      return transceiver.transmitSignal(sender, nameReceiverPair.target, nameReceiverPair.message)
+
+    proc TransmitNameReceiverPairSignals(transceiver: UNameSignalTransceiverPtr, sender: AActorPtr, nameReceiverPairs: TArray[FNameReceiverPair]) =
+      for i in 0..<nameReceiverPairs.len:
+        let nameReceiverPair = nameReceiverPairs[i]
+        discard transceiver.transmitSignal(sender, nameReceiverPair.target, nameReceiverPair.message)
+    
