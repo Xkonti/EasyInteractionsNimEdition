@@ -10,7 +10,7 @@ uClass UDirectInteractionComponent of UActorComponent:
         selectors: TArray[AActorPtr]
 
     uprops(BlueprintReadWrite, EditAnywhere, Category = "Setup"):
-        enabled: bool
+        bEnabled: bool
         allowInteraction: bool
 
     uprops(BlueprintReadWrite, Category = "Setup"):
@@ -40,17 +40,16 @@ uClass UDirectInteractionComponent of UActorComponent:
                 self.onSelectedChanged.broadcast(self.selected)
 
         proc getEnabled(): bool =
-            self.enabled
+            self.bEnabled
 
         proc setEnabled(newValue: bool) =
-            let prevEnabled = self.enabled
-            self.enabled = newValue
-            if prevEnabled != self.enabled:
-                self.onEnabledChanged.broadcast(self.enabled)
+            let prevEnabled = self.bEnabled
+            self.bEnabled = newValue
+            if prevEnabled != self.bEnabled:
+                self.onEnabledChanged.broadcast(self.bEnabled)
 
-        # TODO: Figure out how to make this work
-        # proc toggleEnabled() =
-        #     self.setEnabled(not self.enabled)
+        proc toggleEnabled() =
+            self.setEnabled(not self.bEnabled)
 
         proc getAllowInteraction(): bool =
             self.allowInteraction
