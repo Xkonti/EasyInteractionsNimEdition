@@ -2,9 +2,10 @@ uClass USignalTransceiverBase of UActorComponent:
     (Blueprintable, BlueprintType, ClassGroup="Easy Interactions", BlueprintSpawnableComponent)
   
     ufuncs(BlueprintCallable, BlueprintNativeEvent):
+        # TODO: Make it not BlueprintNativeEvent - BlueprintNativeEvent is not supposed to have a body
         proc getHandledSignalType(): FName =
             log "Please override this function"
-            result = FName()
+            result = makeFName()
   
     ufuncs(BlueprintCallable):
         proc printMissingTransceiverError() =
@@ -76,8 +77,9 @@ template CreateTransceiverComponent(classname: untyped, delegateName: untyped, d
             onSignal: delegateName
     
         ufuncs(BlueprintCallable, BlueprintNativeEvent):
+            # TODO: Make it not BlueprintNativeEvent - BlueprintNativeEvent is not supposed to have a body
             proc getHandledSignalType(): FName =
-                const name = FName(signalName)
+                const name = makeFName(signalName)
                 result = name
     
         ufuncs(BlueprintCallable):
