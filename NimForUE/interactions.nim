@@ -181,7 +181,6 @@ uClass UTraceInteractor of USceneComponent:
                     self.selectedComponent.removeSelectingActor(ownerActor)
                 interactionComponent.addSelectingActor(ownerActor)
 
-            UE_Warn "Went through it all!"
             return true
 
     ufuncs(BlueprintCallable):
@@ -212,17 +211,14 @@ uClass UTraceInteractor of USceneComponent:
 
             self.lastSelectedActorComponent = self.selectedComponent
 
-
-            # TODO: Place this in a separate function when possible
+            # Tracing
             var outHit: FHitResult
             let foundInteractive = self.trace(outHit) 
 
-
-
-
+            # Selection
             if foundInteractive:
                 # Ignore if the seleciton didn't change
-                if self.lastSelectedActorComponent == selectedComponent:
+                if self.lastSelectedActorComponent == self.selectedComponent:
                     return
 
                 let selectedActor = self.selectedComponent.getOwner() 
