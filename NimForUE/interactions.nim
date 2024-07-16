@@ -121,35 +121,35 @@ uClass UTraceInteractor of USceneComponent:
             UE_Warn "Interaction transceiver component found"
             self.interactionSignalTransceiver = interactionTxComponent
 
-        proc doTick(deltaSeconds: float32) =
-            if not self.automaticTracing:
-                return
+        # proc doTick(deltaSeconds: float32) =
+        #     if not self.automaticTracing:
+        #         return
 
-            # TODO: Add delay timer to prevent tracing too often - this will required begin able to call
-            # other functions from the same class - something that seems to not work at the moment (all otehr TODOs)
+        #     # TODO: Add delay timer to prevent tracing too often - this will required begin able to call
+        #     # other functions from the same class - something that seems to not work at the moment (all otehr TODOs)
 
-            self.lastSelectedActorComponent = self.selectedComponent
-
-
-            # TODO: Place this in a separate function when possible
-            outHit: FHitResult
-            collisionParams: FCollisionQueryParams
-            collisionParams.addIgnoredActor(self.getOwner())
+        #     self.lastSelectedActorComponent = self.selectedComponent
 
 
+        #     # TODO: Place this in a separate function when possible
+        #     var outHit: FHitResult
+        #     collisionParams: FCollisionQueryParams
+        #     collisionParams.addIgnoredActor(self.getOwner())
 
 
-            if foundInteractive:
-                # Ignore if the seleciton didn't change
-                if lastSelectedActorComponent == selectedComponent:
-                    return
 
-                self.onSelectionStart.broadcast(selectedComponent.getOwner())
-                lastSelectedActorComponent = selectedComponent
 
-            else:
-                if not lastSelectedActorComponent.isValid():
-                    return
+        #     if foundInteractive:
+        #         # Ignore if the seleciton didn't change
+        #         if lastSelectedActorComponent == selectedComponent:
+        #             return
 
-                self.onSelectionStop.broadcast(lastSelectedActorComponent.getOwner())
-                lastSelectedActorComponent = nil
+        #         self.onSelectionStart.broadcast(selectedComponent.getOwner())
+        #         lastSelectedActorComponent = selectedComponent
+
+        #     else:
+        #         if not lastSelectedActorComponent.isValid():
+        #             return
+
+        #         self.onSelectionStop.broadcast(lastSelectedActorComponent.getOwner())
+        #         lastSelectedActorComponent = nil

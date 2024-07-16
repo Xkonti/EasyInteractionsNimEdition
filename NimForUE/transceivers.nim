@@ -3,13 +3,16 @@ uClass USignalTransceiverBase of UActorComponent:
   
     ufuncs(BlueprintCallable, BlueprintNativeEvent):
         # TODO: Make it not BlueprintNativeEvent - BlueprintNativeEvent is not supposed to have a body
-        proc getHandledSignalType(): FName =
-            log "Please override this function"
-            result = makeFName()
+        proc getHandledSignalType(): FName
   
     ufuncs(BlueprintCallable):
         proc printMissingTransceiverError() =
-            UE_Warn "Receiver field is empty in actor '" & $self.getOwner().getDisplayName() & ". Message was sent by '???' [" & $self.getHandledSignalType() & "]" 
+            UE_Warn "Receiver field is empty in actor '" & $self.getOwner().getDisplayName() & ". Message was sent by '???' [" & $self.getHandledSignalType_Implementation() & "]" 
+
+    ufuncs():
+        proc getHandledSignalType_Implementation(): FName =
+            log "Please override this function"
+            result = makeFName("")
 
 proc getTransceiverComponent[T](actor: AActorPtr, transceiverClass: TSubclassOf[T]): USignalTransceiverBasePtr =
     if not actor.isValid():
@@ -76,10 +79,11 @@ template CreateTransceiverComponent(classname: untyped, delegateName: untyped, d
         uprops(BlueprintAssignable, Category = "Easy Interactions|Signal"):
             onSignal: delegateName
     
-        ufuncs(BlueprintCallable, BlueprintNativeEvent):
+        ufuncs():
             # TODO: Make it not BlueprintNativeEvent - BlueprintNativeEvent is not supposed to have a body
-            proc getHandledSignalType(): FName =
-                const name = makeFName(signalName)
+            proc getHandledSignalType_Implementation(): FName =
+                log "Good! The implementation has been found!"
+                let name = makeFName(signalName)
                 result = name
     
         ufuncs(BlueprintCallable):
@@ -91,11 +95,11 @@ template CreateTransceiverComponent(classname: untyped, delegateName: untyped, d
                 let txClass = self.getClass()
                 let txComponentPtr = getTransceiverComponent(receiver, txClass)
                 if txComponentPtr.isNil:
-                    # TODO: self.printMissingTransceiverError()
+                    self.printMissingTransceiverError()
                     return false
                 let receiverComponent = ueCast[classname](txComponentPtr)
                 if receiverComponent.isNil: 
-                    # TODO: self.printMissingTransceiverError()
+                    self.printMissingTransceiverError()
                     return false
 
                 # Get the sender
@@ -126,9 +130,10 @@ uClass UVoidSignalTransceiver of USignalTransceiverBase:
     uprops(BlueprintAssignable, Category = "Easy Interactions|Signal"):
         onSignal: FOnVoidSignalDelegate
 
-    ufuncs(BlueprintCallable, BlueprintNativeEvent):
-        proc getHandledSignalType(): FName =
-            const name = n"Void"
+    ufuncs():
+        proc getHandledSignalType_Implementation(): FName =
+            log "Good! The implementation has been found!"
+            let name = n"Void"
             result = name
 
     ufuncs(BlueprintCallable):
