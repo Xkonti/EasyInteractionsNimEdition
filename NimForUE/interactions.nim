@@ -74,7 +74,7 @@ uClass UTraceInteractor of USceneComponent:
         selectedComponent: UDirectInteractionComponentPtr
 
     uprops(BlueprintReadWrite, Category = "Internal"):
-        lastSelectedActorComponent: UActorComponentPtr
+        lastSelectedActorComponent: UDirectInteractionComponentPtr
         interactionSignalTransceiver: UInteractionSignalTransceiverPtr
 
     uprops(BlueprintReadWrite, EditAnywhere, Category = "Setup"):
@@ -96,11 +96,91 @@ uClass UTraceInteractor of USceneComponent:
     uprops:
         traceDelayTimerHandle: FTimerHandle
 
+    ufunc():
+        proc getDirectInteractionComponent(hitActor: AActorPtr): UDirectInteractionComponentPtr =
+            let directInteractionClass = makeTSubclassOf(UDirectInteractionComponent)
+
+            if not hitActor.isValid():
+                return nil
+
+            let components = hitActor.getComponentsByClass(directInteractionClass)
+            if components.len == 0:
+                return nil
+            
+            let foundComponent = components[0]
+            if not foundComponent.isValid():
+                return nil
+
+            let interactionComponent = ueCast[UDirectInteractionComponent](foundComponent)
+            if interactionComponent.isNil():
+                return nil
+
+            return interactionComponent
+
     ufuncs:
         # TODO: How to make this automatically called?
         proc beginPlay() =
             super(self)
             UE_Warn "Begin play happened!"
+
+        proc trace(outHit: var FHitResult): bool =
+            let worldContextObject = self.getWorld()
+
+            let ownerActor = self.getOwner()
+
+            # Line trace
+
+            let forwardVector = self.getForwardVector()
+            let worldLocation = self.getComponentLocation()
+            var rayStart = (forwardVector * self.interactionRangeMin) + worldLocation
+            var rayEnd = (forwardVector * self.interactionRangeMax) + worldLocation
+            
+            let isHit = lineTraceSingle(
+                worldContextObject,
+                rayStart, rayEnd,
+                ETraceTypeQuery.TraceTypeQuery1,
+                false,
+                self.ignoredActors,
+                self.debugTraces,
+                outHit, true)
+
+            proc failTrace() =
+                if not self.selectedComponent.isValid():
+                    return;
+                self.selectedComponent.removeSelectingActor(ownerActor)
+                self.selectedComponent = nil
+                return
+
+            if not isHit:
+                failTrace()
+                return false
+
+            # Get the DirectInteractionComponent from the hit component
+            let outHitComponent = ueCast[UActorComponent](outHit.component.get())
+            let outHitActor = outHitComponent.getOwner()
+            let interactionComponent = self.getDirectInteractionComponent(outHitActor)
+            if interactionComponent.isNil() or not interactionComponent.getEnabled():
+                failTrace()
+                return false
+
+            # Check if tags provided given the filtering is enabled
+            var hasTag = false
+            if self.filterByTags:
+                for tag in self.tagsToSearchFor:
+                    if outHitComponent.componentHasTag(tag):
+                        hasTag = true
+                        break;
+
+            if not hasTag:
+                failTrace()
+                return false
+
+            # Save target as selected
+            if self.selectedComponent != interactionComponent:
+                self.selectedComponent.removeSelectingActor(ownerActor)
+                interactionComponent.addSelectingActor(ownerActor)
+
+            return true
 
     ufuncs(BlueprintCallable):
         proc init() =
@@ -121,35 +201,35 @@ uClass UTraceInteractor of USceneComponent:
             UE_Warn "Interaction transceiver component found"
             self.interactionSignalTransceiver = interactionTxComponent
 
-        # proc doTick(deltaSeconds: float32) =
-        #     if not self.automaticTracing:
-        #         return
+        proc doTick(deltaSeconds: float32) =
+            if not self.automaticTracing:
+                return
 
-        #     # TODO: Add delay timer to prevent tracing too often - this will required begin able to call
-        #     # other functions from the same class - something that seems to not work at the moment (all otehr TODOs)
+            # TODO: Add delay timer to prevent tracing too often - this will required begin able to call
+            # other functions from the same class - something that seems to not work at the moment (all otehr TODOs)
 
-        #     self.lastSelectedActorComponent = self.selectedComponent
+            self.lastSelectedActorComponent = self.selectedComponent
 
 
-        #     # TODO: Place this in a separate function when possible
-        #     var outHit: FHitResult
-        #     collisionParams: FCollisionQueryParams
-        #     collisionParams.addIgnoredActor(self.getOwner())
-
+            # TODO: Place this in a separate function when possible
+            var outHit: FHitResult
+            let foundInteractive = self.trace(outHit) 
 
 
 
-        #     if foundInteractive:
-        #         # Ignore if the seleciton didn't change
-        #         if lastSelectedActorComponent == selectedComponent:
-        #             return
 
-        #         self.onSelectionStart.broadcast(selectedComponent.getOwner())
-        #         lastSelectedActorComponent = selectedComponent
+            if foundInteractive:
+                # Ignore if the seleciton didn't change
+                if self.lastSelectedActorComponent == selectedComponent:
+                    return
 
-        #     else:
-        #         if not lastSelectedActorComponent.isValid():
-        #             return
+                let selectedActor = self.selectedComponent.getOwner() 
+                self.onSelectionStart.broadcast(selectedActor)
+                self.lastSelectedActorComponent = self.selectedComponent
 
-        #         self.onSelectionStop.broadcast(lastSelectedActorComponent.getOwner())
-        #         lastSelectedActorComponent = nil
+            else:
+                if not self.lastSelectedActorComponent.isValid():
+                    return
+
+                self.onSelectionStop.broadcast(self.lastSelectedActorComponent.getOwner())
+                self.lastSelectedActorComponent = nil
