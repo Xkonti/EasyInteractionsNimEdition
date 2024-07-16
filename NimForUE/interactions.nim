@@ -1,5 +1,10 @@
 uDelegate FOnBooleanChanged(newValue: bool)
 
+var uniqueId: int32 = 0
+proc getUniqueId(): int32 =
+    uniqueId = uniqueId + 1
+    return uniqueId
+
 # Component intended to be used on the player character. Enables tracing for interactive actors in front of the player.
 # Requires:
 # - Interaction Signal Transceiver Component
@@ -72,6 +77,7 @@ uClass UTraceInteractor of USceneComponent:
 
     uprops(BlueprintReadWrite, EditAnywhere, Category = "Internal"):
         selectedComponent: UDirectInteractionComponentPtr
+        delayUuid: int32
 
     uprops(BlueprintReadWrite, Category = "Internal"):
         lastSelectedActorComponent: UDirectInteractionComponentPtr
@@ -92,9 +98,6 @@ uClass UTraceInteractor of USceneComponent:
     uprops(BlueprintAssignable, Category = "Interaction"):
         onSelectionStart: FActorDelegate # Called when new actor is selected.
         onSelectionStop: FActorDelegate # Called when previous actor is not selected anymore.
-
-    uprops:
-        traceDelayTimerHandle: FTimerHandle
 
     ufunc():
         proc getDirectInteractionComponent(hitActor: AActorPtr): UDirectInteractionComponentPtr =
@@ -185,6 +188,7 @@ uClass UTraceInteractor of USceneComponent:
 
     ufuncs(BlueprintCallable):
         proc init() =
+            self.delayUuid = getUniqueId()
             let txClass = makeTSubclassOf(UInteractionSignalTransceiver)
             let txComponentPtr = getTransceiverComponent(self.getOwner(), txClass)
             if txComponentPtr.isNil:
@@ -206,9 +210,19 @@ uClass UTraceInteractor of USceneComponent:
             if not self.automaticTracing:
                 return
 
-            # TODO: Add delay timer to prevent tracing too often - this will required begin able to call
-            # other functions from the same class - something that seems to not work at the moment (all otehr TODOs)
+            # A sketchy useage of the Blurprints' Delay node
+            let latentInfo = FLatentActionInfo(
+                linkage: 0, # Is it supposed to be 0?
+                uuid: self.delayUuid, # What does it do and where to get it from?
+                executionFunction: n"afterDelay",  # This is typically 0 unless you're doing something special
+                callbackTarget: self,
+            )
 
+            delay(self.getWorld(), self.traceInterval, latentInfo)
+
+    ufuncs():
+        proc afterDelay() =
+            UE_Warn "After delay"
             self.lastSelectedActorComponent = self.selectedComponent
 
             # Tracing
