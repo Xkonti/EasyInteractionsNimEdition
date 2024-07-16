@@ -10,8 +10,8 @@ uClass UDirectInteractionComponent of UActorComponent:
         selectors: TArray[AActorPtr]
 
     uprops(BlueprintReadWrite, EditAnywhere, Category = "Setup"):
-        bEnabled: bool
-        allowInteraction: bool
+        bEnabled: bool = true
+        allowInteraction: bool = true
 
     uprops(BlueprintReadWrite, Category = "Setup"):
         selected: bool
@@ -119,9 +119,9 @@ uClass UTraceInteractor of USceneComponent:
 
     ufuncs:
         # TODO: How to make this automatically called?
-        proc beginPlay() =
-            super(self)
-            UE_Warn "Begin play happened!"
+        # proc beginPlay() =
+        #     super(self)
+        #     UE_Warn "Begin play happened!"
 
         proc trace(outHit: var FHitResult): bool =
             let worldContextObject = self.getWorld()
@@ -164,22 +164,24 @@ uClass UTraceInteractor of USceneComponent:
                 return false
 
             # Check if tags provided given the filtering is enabled
-            var hasTag = false
             if self.filterByTags:
+                var hasTag = false
                 for tag in self.tagsToSearchFor:
                     if outHitComponent.componentHasTag(tag):
                         hasTag = true
                         break;
 
-            if not hasTag:
-                failTrace()
-                return false
+                if not hasTag:
+                    failTrace()
+                    return false
 
             # Save target as selected
             if self.selectedComponent != interactionComponent:
-                self.selectedComponent.removeSelectingActor(ownerActor)
+                if not self.selectedComponent.isNil():
+                    self.selectedComponent.removeSelectingActor(ownerActor)
                 interactionComponent.addSelectingActor(ownerActor)
 
+            UE_Warn "Went through it all!"
             return true
 
     ufuncs(BlueprintCallable):
